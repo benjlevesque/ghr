@@ -32,9 +32,14 @@ func makeRootCmd() *cobra.Command {
 	rootCmd.AddCommand(makeCompletionCmd())
 	rootCmd.AddCommand(makeInstallCmd())
 	rootCmd.AddCommand(makeUpdateCmd())
+	rootCmd.AddCommand(makeListCmd())
+	rootCmd.AddCommand(makeCheckCmd())
 
 	rootCmd.PersistentFlags().StringP("config", "c", "$HOME/.config/ghr/config.yaml", "Configuration file")
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
+
+	rootCmd.PersistentFlags().BoolP("version", "v", false, "Display version")
+	rootCmd.PersistentFlags().BoolP("help", "h", false, "Display help")
 
 	return rootCmd
 }

@@ -3,6 +3,7 @@ module github.com/benjlevesque/ghr
 go 1.15
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/google/go-github/v32 v32.1.0
 	github.com/h2non/filetype v1.1.0
 	github.com/magefile/mage v1.10.0
