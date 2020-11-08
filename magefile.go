@@ -9,6 +9,8 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
+var Default = Build
+
 // Build builds the code and generate a "ghr" executable
 func Build() error {
 	if err := sh.Run("go", "mod", "download"); err != nil {
