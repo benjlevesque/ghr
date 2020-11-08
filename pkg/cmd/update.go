@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/benjlevesque/ghr/pkg/config"
 	"github.com/benjlevesque/ghr/pkg/gh"
@@ -75,5 +76,5 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		Tag:   *rel.TagName,
 	}
 
-	return releaseManager.Install("")
+	return releaseManager.Install("", filepath.Dir(item.Executable))
 }

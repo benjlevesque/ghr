@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -28,7 +27,7 @@ type ReleaseManager struct {
 // Install tries to download, install and save the configuration of the given repo asset.
 // If tag is empty, it will default to latest
 // If assetName is empty, it will try to match an asset given the current system architecture and OS
-func (rm *ReleaseManager) Install(assetName string) error {
+func (rm *ReleaseManager) Install(assetName, installPath string) error {
 	release, err := gh.GetReleaseByTag(rm.Owner, rm.Repo, rm.Tag)
 	if err != nil {
 		return err
@@ -47,7 +46,8 @@ func (rm *ReleaseManager) Install(assetName string) error {
 	if checksum == "" {
 		fmt.Println("Warning: could not find the checksum")
 	}
-	err = downloadAndInstallAsset(assetName, *asset.BrowserDownloadURL, checksum)
+
+	executablePath, err := downloadAndInstallAsset(assetName, *asset.BrowserDownloadURL, checksum, installPath)
 	if err != nil {
 		return err
 	}
@@ -55,17 +55,18 @@ func (rm *ReleaseManager) Install(assetName string) error {
 	fmt.Printf("Successfully installed %s/%s, version %s\n", rm.Owner, rm.Repo, *release.TagName)
 
 	return config.AddOrUpdate(config.ConfigItem{
-		Name:     rm.Owner + "/" + rm.Repo,
-		Version:  *release.TagName,
-		Checksum: checksum,
+		Name:       rm.Owner + "/" + rm.Repo,
+		Version:    *release.TagName,
+		Checksum:   checksum,
+		Executable: executablePath,
 	})
 }
 
-func downloadAndInstallAsset(name, url, checksum string) error {
+func downloadAndInstallAsset(name, url, checksum, path string) (string, error) {
 	resp, err := http.Get(url)
 
 	if err != nil {
-		return fmt.Errorf("Cannot get %s: %s", url, err)
+		return "", fmt.Errorf("Cannot get %s: %s", url, err)
 	}
 	defer resp.Body.Close()
 	i, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
@@ -76,19 +77,19 @@ func downloadAndInstallAsset(name, url, checksum string) error {
 	reader := bar.NewProxyReader(resp.Body)
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("Error reading body: %s", err)
+		return "", fmt.Errorf("Error reading body: %s", err)
 	}
 	bar.Finish()
 
 	if checksum != "" && checksum != fmt.Sprintf("%x", sha256.Sum256(body)) {
-		return fmt.Errorf("Checksums don't match")
+		return "", fmt.Errorf("Checksums don't match")
 	}
 
-	home, err := os.UserHomeDir()
+	installedPath, err := util.ExtractTarGzBinary(bytes.NewReader(body), path)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return util.ExtractTarGzBinary(bytes.NewReader(body), home+"/bin")
+	return installedPath, nil
 }
 
 func getArchAliases(arch string) []string {

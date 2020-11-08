@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/benjlevesque/ghr/pkg/gh"
@@ -75,6 +76,18 @@ func installCommandCompletion(cmd *cobra.Command, args []string, toComplete stri
 	return result, cobra.ShellCompDirectiveNoFileComp
 }
 
+func isInPath(path string) bool {
+	envPath := os.Getenv("PATH")
+	segments := strings.Split(envPath, ":")
+	for _, seg := range segments {
+		if seg == path {
+			return true
+		}
+	}
+
+	return false
+}
+
 func makeInstallCmd() *cobra.Command {
 	command := &cobra.Command{
 		Use:               "install [OWNER/REPO] [asset]",
@@ -87,13 +100,17 @@ func makeInstallCmd() *cobra.Command {
 	// workaround due to https://github.com/spf13/viper/issues/233
 	viper.BindPFlag("install.tag", command.Flags().Lookup("tag"))
 
+	command.Flags().StringP("path", "p", "$HOME/bin", "where to install the application")
+	command.MarkFlagDirname("path")
+	viper.BindPFlag("install.path", command.Flags().Lookup("path"))
+
 	command.RegisterFlagCompletionFunc("tag", tagArgsCompletion)
 	return command
 }
 
 func runInstall(cmd *cobra.Command, args []string) error {
 	tag := viper.GetString("install.tag")
-	fmt.Println(tag)
+	installPath := viper.GetString("install.path")
 
 	owner, repo, assetName, err := parseArgs(args)
 	if err != nil {
@@ -104,9 +121,16 @@ func runInstall(cmd *cobra.Command, args []string) error {
 		Repo:  repo,
 		Tag:   tag,
 	}
-	err = releaseManager.Install(assetName)
+	home, err := os.UserHomeDir()
+	if err == nil {
+		installPath = strings.ReplaceAll(installPath, "$HOME", home)
+	}
+	err = releaseManager.Install(assetName, installPath)
 	if err != nil {
 		return fmt.Errorf("Installation failed: %s", err)
+	}
+	if !isInPath(installPath) {
+		fmt.Printf("Warning: The chosen installation direction is not in your PATH\n")
 	}
 	return nil
 }

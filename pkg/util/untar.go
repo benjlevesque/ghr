@@ -13,10 +13,10 @@ import (
 )
 
 // ExtractTarGzBinary extracts only the binary content of a tar gz tothe target directory
-func ExtractTarGzBinary(gzipStream io.Reader, target string) error {
+func ExtractTarGzBinary(gzipStream io.Reader, target string) (string, error) {
 	uncompressedStream, err := gzip.NewReader(gzipStream)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	tarReader := tar.NewReader(uncompressedStream)
@@ -27,33 +27,33 @@ func ExtractTarGzBinary(gzipStream io.Reader, target string) error {
 			break
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
 		switch header.Typeflag {
 		case tar.TypeReg:
 			data, err := ioutil.ReadAll(tarReader)
 			if err != nil {
-				return err
+				return "", err
 			}
 			kind, err := filetype.MatchReader(bytes.NewReader(data))
 			if err != nil {
-				return err
+				return "", err
 			}
 
 			if kind.MIME.Type == "application" {
 				outFile, err := os.OpenFile(target+"/"+header.Name, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 				if err != nil {
-					return err
+					return "", err
 				}
 				defer outFile.Close()
 				err = ioutil.WriteFile(target+"/"+header.Name, data, os.FileMode(header.Mode))
 				// }
 				if err != nil {
-					return err
+					return "", err
 				}
-				return nil
+				return target + "/" + header.Name, nil
 			}
 		}
 	}
-	return errors.New("No application found")
+	return "", errors.New("No application found")
 }
