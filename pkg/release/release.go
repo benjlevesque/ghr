@@ -109,6 +109,9 @@ func getAsset(assetName string, assets []*github.ReleaseAsset) *github.ReleaseAs
 		if assetName != "" && name == assetName {
 			return asset
 		} else if assetName == "" {
+			if !strings.Contains(name, ".tar.gz") {
+				continue
+			}
 			if !strings.Contains(name, runtime.GOOS) {
 				continue
 			}
