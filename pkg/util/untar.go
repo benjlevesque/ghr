@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/h2non/filetype"
 )
@@ -41,17 +42,18 @@ func ExtractTarGzBinary(gzipStream io.Reader, target string) (string, error) {
 			}
 
 			if kind.MIME.Type == "application" {
-				outFile, err := os.OpenFile(target+"/"+header.Name, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+				path := target + "/" + filepath.Base(header.Name)
+				outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 				if err != nil {
 					return "", err
 				}
 				defer outFile.Close()
-				err = ioutil.WriteFile(target+"/"+header.Name, data, os.FileMode(header.Mode))
+				err = ioutil.WriteFile(path, data, os.FileMode(header.Mode))
 				// }
 				if err != nil {
 					return "", err
 				}
-				return target + "/" + header.Name, nil
+				return path, nil
 			}
 		}
 	}
