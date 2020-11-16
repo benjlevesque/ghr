@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -42,11 +43,7 @@ func (i *ConfigItem) Repository() string {
 }
 
 func Load() (*Config, error) {
-	path := viper.GetString("config")
-	home, err := os.UserHomeDir()
-	if err == nil {
-		path = strings.ReplaceAll(path, "$HOME", home)
-	}
+	path := getConfigPath()
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		configDir := filepath.Dir(path)
@@ -73,12 +70,28 @@ func Load() (*Config, error) {
 	return &config, nil
 }
 
-func Save(config *Config) error {
+func getConfigPath() string {
 	path := viper.GetString("config")
-	home, err := os.UserHomeDir()
+	sudoUser := os.Getenv("SUDO_USER")
+	var home string
+	var err error
+	if sudoUser == "" {
+		home, err = os.UserHomeDir()
+	} else {
+		var u *user.User
+		u, err = user.Lookup(sudoUser)
+		if err == nil {
+			home = u.HomeDir
+		}
+	}
 	if err == nil {
 		path = strings.ReplaceAll(path, "$HOME", home)
 	}
+	return path
+}
+
+func Save(config *Config) error {
+	path := getConfigPath()
 	data, err := yaml.Marshal(config)
 	if err != nil {
 		return err
@@ -91,10 +104,10 @@ func AddOrUpdate(item ConfigItem) error {
 	if err != nil {
 		return err
 	}
-	return config.Save(item)
+	return config.AddOrUpdate(item)
 }
 
-func (c *Config) Save(item ConfigItem) error {
+func (c *Config) AddOrUpdate(item ConfigItem) error {
 	for i, currentItem := range c.Items {
 		if currentItem.Name == item.Name {
 			c.Items[i] = item
